@@ -21,6 +21,7 @@ import (
 	keystorev4 "github.com/wealdtech/go-eth2-wallet-encryptor-keystorev4"
 	nd "github.com/wealdtech/go-eth2-wallet-nd"
 	scratch "github.com/wealdtech/go-eth2-wallet-store-scratch"
+	types "github.com/wealdtech/go-eth2-wallet-types"
 )
 
 func TestExportWallet(t *testing.T) {
@@ -36,7 +37,7 @@ func TestExportWallet(t *testing.T) {
 	account2, err := wallet.CreateAccount("Account 2", []byte{})
 	require.Nil(t, err)
 
-	dump, err := wallet.Export([]byte("dump"))
+	dump, err := wallet.(types.WalletExporter).Export([]byte("dump"))
 	require.Nil(t, err)
 
 	// Import it
@@ -56,4 +57,8 @@ func TestExportWallet(t *testing.T) {
 		}
 	}
 	assert.True(t, account1Present && account2Present)
+
+	// Try to import it again; should fail
+	_, err = nd.Import(dump, []byte("dump"), store2, encryptor)
+	assert.NotNil(t, err)
 }

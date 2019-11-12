@@ -143,13 +143,18 @@ func (a *account) Name() string {
 
 // PublicKey provides the public key for the account.
 func (a *account) PublicKey() etypes.PublicKey {
-	return a.publicKey
+	// Safe to ignore the error as this is already a public key
+	keyCopy, _ := etypes.BLSPublicKeyFromBytes(a.publicKey.Marshal())
+	return keyCopy
 }
 
-// Address provides the address for the account.
-//func (a *account) Address() *etypes.Address {
-//	return etypes.AddressFromPubKey(a.publicKey)
-//}
+// PrivateKey provides the private key for the account.
+func (a *account) PrivateKey() (etypes.PrivateKey, error) {
+	if a.secretKey == nil {
+		return nil, errors.New("cannot provide private key when account is locked")
+	}
+	return etypes.BLSPrivateKeyFromBytes(a.secretKey.Marshal())
+}
 
 // Lock locks the account.  A locked account cannot sign data.
 func (a *account) Lock() {

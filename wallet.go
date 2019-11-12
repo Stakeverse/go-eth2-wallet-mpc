@@ -243,6 +243,49 @@ func (w *wallet) CreateAccount(name string, passphrase []byte) (types.Account, e
 	return a, a.Store()
 }
 
+// ImportAccount creates a new account in the wallet from an existing private key.
+// The only rule for names is that they cannot start with an underscore (_) character.
+// This will error if an account with the name already exists.
+func (w *wallet) ImportAccount(name string, key []byte, passphrase []byte) (types.Account, error) {
+	if name == "" {
+		return nil, errors.New("account name missing")
+	}
+	if strings.HasPrefix(name, "_") {
+		return nil, fmt.Errorf("invalid account name %q", name)
+	}
+	if !w.IsUnlocked() {
+		return nil, errors.New("wallet must be unlocked to import accounts")
+	}
+
+	// Ensure that we don't already have an account with this name
+	_, err := w.AccountByName(name)
+	if err == nil {
+		return nil, fmt.Errorf("account with name %q already exists", name)
+	}
+
+	a := newAccount()
+	a.id, err = uuid.NewRandom()
+	if err != nil {
+		return nil, err
+	}
+	a.name = name
+	privateKey, err := etypes.BLSPrivateKeyFromBytes(key)
+	if err != nil {
+		return nil, err
+	}
+	a.publicKey = privateKey.PublicKey()
+	// Encrypt the private key
+	a.crypto, err = w.encryptor.Encrypt(privateKey.Marshal(), passphrase)
+	if err != nil {
+		return nil, err
+	}
+	a.encryptor = w.encryptor
+	a.version = w.encryptor.Version()
+	a.wallet = w
+
+	return a, a.Store()
+}
+
 // Accounts provides all accounts in the wallet.
 func (w *wallet) Accounts() <-chan types.Account {
 	ch := make(chan types.Account, 1024)
@@ -343,10 +386,4 @@ func (w *wallet) AccountByName(name string) (types.Account, error) {
 		}
 	}
 	return nil, fmt.Errorf("no account with name %q", name)
-}
-
-// Key returns this wallet's key.
-// The non-deterministic wallet does not have a key, so nothing is returned.
-func (w *wallet) Key() ([]byte, error) {
-	return nil, nil
 }
