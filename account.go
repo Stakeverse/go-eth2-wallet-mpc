@@ -207,5 +207,5 @@ func (a *account) Store() error {
 	if err != nil {
 		return err
 	}
-	return a.wallet.(*wallet).store.StoreAccount(a.wallet, a, data)
+	return a.wallet.(*wallet).store.StoreAccount(a.wallet.ID(), a.wallet.Name(), a.ID(), a.Name(), data)
 }
