@@ -142,11 +142,13 @@ func TestImportAccount(t *testing.T) {
 				require.Nil(t, err)
 				assert.Equal(t, test.accountName, account.Name())
 				assert.Equal(t, "", account.Path())
+				// Should not be able to obtain private key from a locked account
+				_, err = account.(types.AccountPrivateKeyProvider).PrivateKey()
+				assert.NotNil(t, err)
 				err = account.Unlock(test.passphrase)
 				require.Nil(t, err)
-				//				assert.Equal(t, test.id, account.ID())
-				//				assert.Equal(t, test.version, account.Version())
-				//				assert.Equal(t, test.walletType, account.Type())
+				_, err := account.(types.AccountPrivateKeyProvider).PrivateKey()
+				assert.Nil(t, err)
 			}
 		})
 	}

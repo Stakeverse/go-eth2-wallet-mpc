@@ -50,7 +50,7 @@ func newAccount() *account {
 // MarshalJSON implements custom JSON marshaller.
 func (a *account) MarshalJSON() ([]byte, error) {
 	data := make(map[string]interface{})
-	data["id"] = a.id.String()
+	data["uuid"] = a.id.String()
 	data["name"] = a.name
 	data["pubkey"] = fmt.Sprintf("%x", a.publicKey.Marshal())
 	data["crypto"] = a.crypto
@@ -65,7 +65,7 @@ func (a *account) UnmarshalJSON(data []byte) error {
 	if err := json.Unmarshal(data, &v); err != nil {
 		return err
 	}
-	if val, exists := v["id"]; exists {
+	if val, exists := v["uuid"]; exists {
 		idStr, ok := val.(string)
 		if !ok {
 			return errors.New("account ID invalid")
@@ -76,7 +76,20 @@ func (a *account) UnmarshalJSON(data []byte) error {
 		}
 		a.id = id
 	} else {
-		return errors.New("account ID missing")
+		// Used to be ID; remove with V2.0
+		if val, exists := v["id"]; exists {
+			idStr, ok := val.(string)
+			if !ok {
+				return errors.New("account ID invalid")
+			}
+			id, err := uuid.Parse(idStr)
+			if err != nil {
+				return err
+			}
+			a.id = id
+		} else {
+			return errors.New("account ID missing")
+		}
 	}
 	if val, exists := v["name"]; exists {
 		name, ok := val.(string)

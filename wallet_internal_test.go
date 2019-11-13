@@ -53,11 +53,21 @@ func TestUnmarshalWallet(t *testing.T) {
 		},
 		{
 			name:  "WrongID",
-			input: []byte(`{"id":7,"name":"Bad","type":"non-deterministic","version":1}`),
+			input: []byte(`{"uuid":7,"name":"Bad","type":"non-deterministic","version":1}`),
 			err:   errors.New("wallet ID invalid"),
 		},
 		{
 			name:  "BadID",
+			input: []byte(`{"uuid":"bad","name":"Bad","type":"non-deterministic","version":1}`),
+			err:   errors.New("invalid UUID length: 3"),
+		},
+		{
+			name:  "WrongOldID",
+			input: []byte(`{"id":7,"name":"Bad","type":"non-deterministic","version":1}`),
+			err:   errors.New("wallet ID invalid"),
+		},
+		{
+			name:  "BadOldID",
 			input: []byte(`{"id":"bad","name":"Bad","type":"non-deterministic","version":1}`),
 			err:   errors.New("invalid UUID length: 3"),
 		},
@@ -68,37 +78,37 @@ func TestUnmarshalWallet(t *testing.T) {
 		},
 		{
 			name:  "WrongName",
-			input: []byte(`{"id":"c9958061-63d4-4a80-bcf3-25f3dda22340","name":1,"type":"non-deterministic","version":1}`),
+			input: []byte(`{"uuid":"c9958061-63d4-4a80-bcf3-25f3dda22340","name":1,"type":"non-deterministic","version":1}`),
 			err:   errors.New("wallet name invalid"),
 		},
 		{
 			name:  "MissingType",
-			input: []byte(`{"id":"c9958061-63d4-4a80-bcf3-25f3dda22340","name":"Bad","version":1}`),
+			input: []byte(`{"uuid":"c9958061-63d4-4a80-bcf3-25f3dda22340","name":"Bad","version":1}`),
 			err:   errors.New("wallet type missing"),
 		},
 		{
 			name:  "WrongType",
-			input: []byte(`{"id":"c9958061-63d4-4a80-bcf3-25f3dda22340","name":"Bad","type":7,"version":1}`),
+			input: []byte(`{"uuid":"c9958061-63d4-4a80-bcf3-25f3dda22340","name":"Bad","type":7,"version":1}`),
 			err:   errors.New("wallet type invalid"),
 		},
 		{
 			name:  "BadType",
-			input: []byte(`{"id":"c9958061-63d4-4a80-bcf3-25f3dda22340","name":"Bad","type":"hd","version":1}`),
+			input: []byte(`{"uuid":"c9958061-63d4-4a80-bcf3-25f3dda22340","name":"Bad","type":"hd","version":1}`),
 			err:   errors.New(`wallet type "hd" unexpected`),
 		},
 		{
 			name:  "MissingVersion",
-			input: []byte(`{"id":"c9958061-63d4-4a80-bcf3-25f3dda22340","name":"Bad","type":"non-deterministic"}`),
+			input: []byte(`{"uuid":"c9958061-63d4-4a80-bcf3-25f3dda22340","name":"Bad","type":"non-deterministic"}`),
 			err:   errors.New("wallet version missing"),
 		},
 		{
 			name:  "WrongVersion",
-			input: []byte(`{"id":"c9958061-63d4-4a80-bcf3-25f3dda22340","name":"Bad","type":"non-deterministic","version":"1"}`),
+			input: []byte(`{"uuid":"c9958061-63d4-4a80-bcf3-25f3dda22340","name":"Bad","type":"non-deterministic","version":"1"}`),
 			err:   errors.New("wallet version invalid"),
 		},
 		{
 			name:       "Good",
-			input:      []byte(`{"id":"c9958061-63d4-4a80-bcf3-25f3dda22340","name":"Good","type":"non-deterministic","version":1}`),
+			input:      []byte(`{"uuid":"c9958061-63d4-4a80-bcf3-25f3dda22340","name":"Good","type":"non-deterministic","version":1}`),
 			walletType: "non-deterministic",
 			id:         uuid.MustParse("c9958061-63d4-4a80-bcf3-25f3dda22340"),
 			version:    1,

@@ -52,7 +52,7 @@ func newWallet() *wallet {
 // MarshalJSON implements custom JSON marshaller.
 func (w *wallet) MarshalJSON() ([]byte, error) {
 	data := make(map[string]interface{})
-	data["id"] = w.id.String()
+	data["uuid"] = w.id.String()
 	data["name"] = w.name
 	data["version"] = w.version
 	data["type"] = walletType
@@ -76,7 +76,7 @@ func (w *wallet) UnmarshalJSON(data []byte) error {
 	} else {
 		return errors.New("wallet type missing")
 	}
-	if val, exists := v["id"]; exists {
+	if val, exists := v["uuid"]; exists {
 		idStr, ok := val.(string)
 		if !ok {
 			return errors.New("wallet ID invalid")
@@ -87,7 +87,20 @@ func (w *wallet) UnmarshalJSON(data []byte) error {
 		}
 		w.id = id
 	} else {
-		return errors.New("wallet ID missing")
+		// Used to be ID; remove with V2.0
+		if val, exists := v["id"]; exists {
+			idStr, ok := val.(string)
+			if !ok {
+				return errors.New("wallet ID invalid")
+			}
+			id, err := uuid.Parse(idStr)
+			if err != nil {
+				return err
+			}
+			w.id = id
+		} else {
+			return errors.New("wallet ID missing")
+		}
 	}
 	if val, exists := v["name"]; exists {
 		name, ok := val.(string)
