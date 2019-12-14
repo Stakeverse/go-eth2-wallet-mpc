@@ -163,7 +163,7 @@ func (a *account) PublicKey() etypes.PublicKey {
 
 // PrivateKey provides the private key for the account.
 func (a *account) PrivateKey() (etypes.PrivateKey, error) {
-	if a.secretKey == nil {
+	if !a.IsUnlocked() {
 		return nil, errors.New("cannot provide private key when account is locked")
 	}
 	return etypes.BLSPrivateKeyFromBytes(a.secretKey.Marshal())
@@ -197,6 +197,11 @@ func (a *account) Unlock(passphrase []byte) error {
 	return nil
 }
 
+// IsUnlocked returns true if the account is unlocked.
+func (a *account) IsUnlocked() bool {
+	return a.secretKey != nil
+}
+
 // Path returns "" as non-deterministic accounts are not derived.
 func (a *account) Path() string {
 	return ""
@@ -206,7 +211,7 @@ func (a *account) Path() string {
 func (a *account) Sign(data []byte, domain uint64) (etypes.Signature, error) {
 	a.mutex.RLock()
 	defer a.mutex.RUnlock()
-	if a.secretKey == nil {
+	if !a.IsUnlocked() {
 		return nil, errors.New("cannot sign when account is locked")
 	}
 	return a.secretKey.Sign(data, domain), nil
