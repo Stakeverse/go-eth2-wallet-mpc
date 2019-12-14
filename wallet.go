@@ -141,7 +141,7 @@ func CreateWallet(name string, store types.Store, encryptor types.Encryptor) (ty
 	w := newWallet()
 	w.id = id
 	w.name = name
-	w.version = 1
+	w.version = version
 	w.store = store
 	w.encryptor = encryptor
 

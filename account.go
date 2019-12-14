@@ -190,7 +190,7 @@ func (a *account) Unlock(passphrase []byte) error {
 		return err
 	}
 	publicKey := secretKey.PublicKey()
-	if bytes.Compare(publicKey.Marshal(), a.publicKey.Marshal()) != 0 {
+	if !bytes.Equal(publicKey.Marshal(), a.publicKey.Marshal()) {
 		return errors.New("secret key does not correspond to public key")
 	}
 	a.secretKey = secretKey
