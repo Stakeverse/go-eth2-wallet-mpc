@@ -19,6 +19,8 @@ github.com/phoreproject/bls v0.0.0-20191211001008-9d5f85bf4a9b h1:tE/F54uL3jp0ZG
 github.com/phoreproject/bls v0.0.0-20191211001008-9d5f85bf4a9b/go.mod h1:xHJKf2TLXUA39Dhv8k5QmQOxLsbrb1KeTS/3ERfLeqc=
 github.com/pkg/errors v0.8.1 h1:iURUrRGxPUNPdy5/HRSm+Yj6okJ6UtLINN0Q9M4+h3I=
 github.com/pkg/errors v0.8.1/go.mod h1:bwawxfHBFNV+L2hUp1rHADufV3IMtnDRdf1r5NINEl0=
+github.com/pkg/errors v0.9.0 h1:J8lpUdobwIeCI7OiSxHqEwJUKvJwicL5+3v1oe2Yb4k=
+github.com/pkg/errors v0.9.0/go.mod h1:bwawxfHBFNV+L2hUp1rHADufV3IMtnDRdf1r5NINEl0=
 github.com/pmezard/go-difflib v1.0.0 h1:4DBwDE0NGyQoBHbLQYPwSUPoCMWR5BEzIk/f1lZbAQM=
 github.com/pmezard/go-difflib v1.0.0/go.mod h1:iKH77koFhYxTK1pcRnkKkqfTogsbg7gZNVY4sRDYZ/4=
 github.com/stretchr/objx v0.1.0 h1:4G4v2dO3VZwixGIRoQ5Lfboy6nUhCyYzaqnIAPPhYs4=
@@ -34,12 +36,16 @@ github.com/wealdtech/go-bytesutil v1.1.0 h1:6XrN7OIQhhBjQy/PZ1HZ3ySE8v8UDyxzERkO
 github.com/wealdtech/go-bytesutil v1.1.0/go.mod h1:jENeMqeTEU8FNZyDFRVc7KqBdRKSnJ9CCh26TcuNb9s=
 github.com/wealdtech/go-ecodec v1.0.0 h1:QQj1t/yOGLsx8WUJaCTN+RrivgdWlP+r5ixzGzhlXVU=
 github.com/wealdtech/go-ecodec v1.0.0/go.mod h1:PSdBFEB6cltdT7V4E1jbboufMZTZXcQOKG/2PeEjKK4=
+github.com/wealdtech/go-ecodec v1.1.0 h1:yggrTSckcPJRaxxOxQF7FPm21kgE8WA6+f5jdq5Kr8o=
+github.com/wealdtech/go-ecodec v1.1.0/go.mod h1:PSdBFEB6cltdT7V4E1jbboufMZTZXcQOKG/2PeEjKK4=
 github.com/wealdtech/go-eth2-types v1.0.0 h1:ggrbQ5HeFcxVm20zxVWr8Sc3uCditaetzWB/Ax/4g0w=
 github.com/wealdtech/go-eth2-types v1.0.0/go.mod h1:fWUgtKQ7hiNVl6263bGeyjlydYuaxkxcUIPIopgz2CM=
 github.com/wealdtech/go-eth2-wallet-encryptor-keystorev4 v1.0.0 h1:IcpS4VpXhYz+TVupB5n6C6IQzaKwG+Rc8nvgCa/da4c=
 github.com/wealdtech/go-eth2-wallet-encryptor-keystorev4 v1.0.0/go.mod h1:X8WRO5hEwbjx8ZOqoRmtS1ngyflKs25GkP7qGv7yOqE=
 github.com/wealdtech/go-eth2-wallet-store-scratch v1.2.0 h1:GzwNLhfHlR25PXSNWPFBQwMA4nQS80WLTp9DWKhUDXU=
 github.com/wealdtech/go-eth2-wallet-store-scratch v1.2.0/go.mod h1:Rmi0S69tuts1YbVXcimw/4yvYUSiLNIUE9gIT3i1h4E=
+github.com/wealdtech/go-eth2-wallet-store-scratch v1.3.0 h1:iC0pZQY9zfh1onYHwnkiQa6V998LVK54U5ShUu7QTf8=
+github.com/wealdtech/go-eth2-wallet-store-scratch v1.3.0/go.mod h1:NaV/et5zTaqHhTpdpSveUYE2czCFAD8f07eABh/0pso=
 github.com/wealdtech/go-eth2-wallet-types v1.5.0 h1:9uRdSws4Wg42lQ63AEg4X/1Mt/si5MIZOBaVpuCyrLU=
 github.com/wealdtech/go-eth2-wallet-types v1.5.0/go.mod h1:OQqqr/hWOwNHe9NyXI0cYGQI6CBBmAlcusqWnJCf7T8=
 github.com/wealdtech/go-eth2-wallet-types v1.7.0 h1:wzIrTpD31rFWJIU2rWGOowoaDBpl7nTSHL8W0tjv2oo=
@@ -58,6 +64,8 @@ golang.org/x/crypto v0.0.0-20191105034135-c7e5f84aec59 h1:PyXRxSVbvzDGuqYXjHndV7
 golang.org/x/crypto v0.0.0-20191105034135-c7e5f84aec59/go.mod h1:LzIPMQfyMNhhGPhUkYOs5KpL4U8rLKemX1yGLhDgUto=
 golang.org/x/crypto v0.0.0-20191206172530-e9b2fee46413 h1:ULYEB3JvPRE/IfO+9uO7vKV/xzVTO7XPAwm8xbf4w2g=
 golang.org/x/crypto v0.0.0-20191206172530-e9b2fee46413/go.mod h1:LzIPMQfyMNhhGPhUkYOs5KpL4U8rLKemX1yGLhDgUto=
+golang.org/x/crypto v0.0.0-20200109152110-61a87790db17 h1:nVJ3guKA9qdkEQ3TUdXI9QSINo2CUPM/cySEvw2w8I0=
+golang.org/x/crypto v0.0.0-20200109152110-61a87790db17/go.mod h1:LzIPMQfyMNhhGPhUkYOs5KpL4U8rLKemX1yGLhDgUto=
 golang.org/x/net v0.0.0-20190311183353-d8887717615a/go.mod h1:t9HGtf8HONx5eT2rtn7q6eTqICYqUVnKs3thJo3Qplg=
 golang.org/x/net v0.0.0-20190326090315-15845e8f865b/go.mod h1:t9HGtf8HONx5eT2rtn7q6eTqICYqUVnKs3thJo3Qplg=
 golang.org/x/net v0.0.0-20190404232315-eb5bcb51f2a3/go.mod h1:t9HGtf8HONx5eT2rtn7q6eTqICYqUVnKs3thJo3Qplg=

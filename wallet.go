@@ -316,6 +316,8 @@ func (w *wallet) ImportAccount(name string, key []byte, passphrase []byte) (type
 	a.version = w.encryptor.Version()
 	a.wallet = w
 
+	w.index.Add(a.id, a.name)
+
 	return a, a.Store()
 }
 
