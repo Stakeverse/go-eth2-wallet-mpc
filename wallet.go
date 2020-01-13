@@ -1,4 +1,4 @@
-// Copyright © 2019 Weald Technology Trading
+// Copyright 2019, 2020 Weald Technology Trading
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
@@ -24,6 +24,7 @@ import (
 	"github.com/wealdtech/go-ecodec"
 	etypes "github.com/wealdtech/go-eth2-types"
 	types "github.com/wealdtech/go-eth2-wallet-types"
+	"github.com/wealdtech/go-indexer"
 )
 
 const (
@@ -40,12 +41,14 @@ type wallet struct {
 	encryptor types.Encryptor
 	mutex     *sync.RWMutex
 	unlocked  bool
+	index     *indexer.Index
 }
 
 // newWallet creates a new wallet
 func newWallet() *wallet {
 	return &wallet{
 		mutex: new(sync.RWMutex),
+		index: indexer.New(),
 	}
 }
 
@@ -160,12 +163,15 @@ func OpenWallet(name string, store types.Store, encryptor types.Encryptor) (type
 // DeserializeWallet deserializes a wallet from its byte-level representation
 func DeserializeWallet(data []byte, store types.Store, encryptor types.Encryptor) (types.Wallet, error) {
 	wallet := newWallet()
-	err := json.Unmarshal(data, wallet)
-	if err != nil {
+	if err := json.Unmarshal(data, wallet); err != nil {
 		return nil, errors.Wrap(err, "wallet corrupt")
 	}
 	wallet.store = store
 	wallet.encryptor = encryptor
+	if err := wallet.retrieveAccountsIndex(); err != nil {
+		return nil, errors.Wrap(err, "wallet index corrupt")
+	}
+
 	return wallet, nil
 }
 
@@ -211,7 +217,16 @@ func (w *wallet) Store() error {
 	if err != nil {
 		return err
 	}
-	return w.store.StoreWallet(w.ID(), w.Name(), data)
+
+	if err := w.storeAccountsIndex(); err != nil {
+		return err
+	}
+
+	if err := w.store.StoreWallet(w.ID(), w.Name(), data); err != nil {
+		return err
+	}
+
+	return nil
 }
 
 // CreateAccount creates a new account in the wallet.
@@ -228,14 +243,13 @@ func (w *wallet) CreateAccount(name string, passphrase []byte) (types.Account, e
 	}
 
 	// Ensure that we don't already have an account with this name
-	_, err := w.AccountByName(name)
-	if err == nil {
+	if _, err := w.AccountByName(name); err == nil {
 		return nil, fmt.Errorf("account with name %q already exists", name)
 	}
 
 	a := newAccount()
-	a.id, err = uuid.NewRandom()
-	if err != nil {
+	var err error
+	if a.id, err = uuid.NewRandom(); err != nil {
 		return nil, err
 	}
 	a.name = name
@@ -253,7 +267,13 @@ func (w *wallet) CreateAccount(name string, passphrase []byte) (types.Account, e
 	a.version = w.encryptor.Version()
 	a.wallet = w
 
-	return a, a.Store()
+	w.index.Add(a.id, a.name)
+
+	if err := a.Store(); err != nil {
+		return nil, err
+	}
+
+	return a, nil
 }
 
 // ImportAccount creates a new account in the wallet from an existing private key.
@@ -304,11 +324,7 @@ func (w *wallet) Accounts() <-chan types.Account {
 	ch := make(chan types.Account, 1024)
 	go func() {
 		for data := range w.store.RetrieveAccounts(w.ID()) {
-			a := newAccount()
-			a.wallet = w
-			a.encryptor = w.encryptor
-			err := json.Unmarshal(data, a)
-			if err == nil {
+			if a, err := deserializeAccount(w, data); err == nil {
 				ch <- a
 			}
 		}
@@ -355,24 +371,22 @@ func Import(encryptedData []byte, passphrase []byte, store types.Store, encrypto
 	}
 
 	ext := &walletExt{}
-	err = json.Unmarshal(data, ext)
-	if err != nil {
+	if err := json.Unmarshal(data, ext); err != nil {
 		return nil, err
 	}
 
 	ext.Wallet.mutex = new(sync.RWMutex)
+	ext.Wallet.index = indexer.New()
 	ext.Wallet.store = store
 	ext.Wallet.encryptor = encryptor
 
 	// See if the wallet already exists
-	_, err = OpenWallet(ext.Wallet.Name(), store, encryptor)
-	if err == nil {
+	if _, err := OpenWallet(ext.Wallet.Name(), store, encryptor); err == nil {
 		return nil, fmt.Errorf("wallet %q already exists", ext.Wallet.Name())
 	}
 
 	// Create the wallet
-	err = ext.Wallet.Store()
-	if err != nil {
+	if err := ext.Wallet.Store(); err != nil {
 		return nil, fmt.Errorf("failed to store wallet %q", ext.Wallet.Name())
 	}
 
@@ -381,10 +395,10 @@ func Import(encryptedData []byte, passphrase []byte, store types.Store, encrypto
 		acc.wallet = ext.Wallet
 		acc.encryptor = encryptor
 		acc.mutex = new(sync.RWMutex)
-		err = acc.Store()
-		if err != nil {
+		if err := acc.Store(); err != nil {
 			return nil, fmt.Errorf("failed to store account %q", acc.Name())
 		}
+		ext.Wallet.index.Add(acc.id, acc.name)
 	}
 
 	return ext.Wallet, nil
@@ -393,10 +407,57 @@ func Import(encryptedData []byte, passphrase []byte, store types.Store, encrypto
 // AccountByName provides a single account from the wallet given its name.
 // This will error if the account is not found.
 func (w *wallet) AccountByName(name string) (types.Account, error) {
-	for account := range w.Accounts() {
-		if account.Name() == name {
-			return account, nil
-		}
+	id, exists := w.index.ID(name)
+	if !exists {
+		return nil, fmt.Errorf("no account with name %q", name)
 	}
-	return nil, fmt.Errorf("no account with name %q", name)
+	return w.AccountByID(id)
+}
+
+// AccountByID provides a single account from the wallet given its ID.
+// This will error if the account is not found.
+func (w *wallet) AccountByID(id uuid.UUID) (types.Account, error) {
+	data, err := w.store.RetrieveAccount(w.id, id)
+	if err != nil {
+		return nil, err
+	}
+	return deserializeAccount(w, data)
+}
+
+// retrieveAccountsIndex retrieves the accounts index for a wallet.
+func (w *wallet) retrieveAccountsIndex() error {
+	serializedIndex, err := w.store.RetrieveAccountsIndex(w.id)
+	if err != nil {
+		if strings.Contains(err.Error(), "index not found") {
+			// No index; create one.
+			w.index = indexer.New()
+			for account := range w.Accounts() {
+				w.index.Add(account.ID(), account.Name())
+			}
+			if err := w.storeAccountsIndex(); err != nil {
+				return err
+			}
+		} else {
+			return err
+		}
+	} else {
+		index, err := indexer.Deserialize(serializedIndex)
+		if err != nil {
+			return err
+		}
+		w.index = index
+	}
+	return nil
+}
+
+// storeAccountsIndex stores the accounts index for a wallet.
+func (w *wallet) storeAccountsIndex() error {
+	serializedIndex, err := w.index.Serialize()
+	if err != nil {
+		return err
+	}
+	if err := w.store.StoreAccountsIndex(w.id, serializedIndex); err != nil {
+		return err
+	}
+	return nil
 }

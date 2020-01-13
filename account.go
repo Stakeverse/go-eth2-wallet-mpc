@@ -1,4 +1,4 @@
-// Copyright © 2019 Weald Technology Trading
+// Copyright 2019, 2020 Weald Technology Trading
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
@@ -225,5 +225,22 @@ func (a *account) Store() error {
 	if err != nil {
 		return err
 	}
-	return a.wallet.(*wallet).store.StoreAccount(a.wallet.ID(), a.ID(), a.Name(), data)
+	if err := a.wallet.(*wallet).storeAccountsIndex(); err != nil {
+		return err
+	}
+	if err := a.wallet.(*wallet).store.StoreAccount(a.wallet.ID(), a.ID(), data); err != nil {
+		return err
+	}
+	return nil
+}
+
+// deserializeAccount deserializes account data to an account.
+func deserializeAccount(w *wallet, data []byte) (types.Account, error) {
+	a := newAccount()
+	a.wallet = w
+	a.encryptor = w.encryptor
+	if err := json.Unmarshal(data, a); err != nil {
+		return nil, err
+	}
+	return a, nil
 }
