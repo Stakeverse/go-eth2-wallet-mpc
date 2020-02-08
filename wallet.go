@@ -148,7 +148,7 @@ func CreateWallet(name string, store types.Store, encryptor types.Encryptor) (ty
 	w.store = store
 	w.encryptor = encryptor
 
-	return w, w.Store()
+	return w, w.storeWallet()
 }
 
 // OpenWallet opens an existing wallet with the given name.
@@ -211,8 +211,8 @@ func (w *wallet) IsUnlocked() bool {
 	return w.unlocked
 }
 
-// Store stores the wallet in the store.
-func (w *wallet) Store() error {
+// storeWallet stores the wallet in the store.
+func (w *wallet) storeWallet() error {
 	data, err := json.Marshal(w)
 	if err != nil {
 		return err
@@ -269,7 +269,7 @@ func (w *wallet) CreateAccount(name string, passphrase []byte) (types.Account, e
 
 	w.index.Add(a.id, a.name)
 
-	if err := a.Store(); err != nil {
+	if err := a.storeAccount(); err != nil {
 		return nil, err
 	}
 
@@ -318,7 +318,7 @@ func (w *wallet) ImportAccount(name string, key []byte, passphrase []byte) (type
 
 	w.index.Add(a.id, a.name)
 
-	return a, a.Store()
+	return a, a.storeAccount()
 }
 
 // Accounts provides all accounts in the wallet.
@@ -388,7 +388,7 @@ func Import(encryptedData []byte, passphrase []byte, store types.Store, encrypto
 	}
 
 	// Create the wallet
-	if err := ext.Wallet.Store(); err != nil {
+	if err := ext.Wallet.storeWallet(); err != nil {
 		return nil, fmt.Errorf("failed to store wallet %q", ext.Wallet.Name())
 	}
 
@@ -397,7 +397,7 @@ func Import(encryptedData []byte, passphrase []byte, store types.Store, encrypto
 		acc.wallet = ext.Wallet
 		acc.encryptor = encryptor
 		acc.mutex = new(sync.RWMutex)
-		if err := acc.Store(); err != nil {
+		if err := acc.storeAccount(); err != nil {
 			return nil, fmt.Errorf("failed to store account %q", acc.Name())
 		}
 		ext.Wallet.index.Add(acc.id, acc.name)
@@ -424,6 +424,11 @@ func (w *wallet) AccountByID(id uuid.UUID) (types.Account, error) {
 		return nil, err
 	}
 	return deserializeAccount(w, data)
+}
+
+// Store returns the wallet's store.
+func (w *wallet) Store() types.Store {
+	return w.store
 }
 
 // retrieveAccountsIndex retrieves the accounts index for a wallet.

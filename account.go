@@ -217,8 +217,8 @@ func (a *account) Sign(data []byte, domain uint64) (etypes.Signature, error) {
 	return a.secretKey.Sign(data, domain), nil
 }
 
-// Store stores the accout.
-func (a *account) Store() error {
+// storeAccount stores the accout.
+func (a *account) storeAccount() error {
 	a.mutex.RLock()
 	defer a.mutex.RUnlock()
 	data, err := json.Marshal(a)
