@@ -1,4 +1,5 @@
 // Copyright © 2019 Weald Technology Trading
+// Copyright © 2020 Staked Securely LLC
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
@@ -11,27 +12,27 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package nd_test
+package mpc_test
 
 import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
 	keystorev4 "github.com/wealdtech/go-eth2-wallet-encryptor-keystorev4"
-	nd "github.com/wealdtech/go-eth2-wallet-nd"
+	mpc "github.com/Stakedllc/go-eth2-wallet-mpc"
 	scratch "github.com/wealdtech/go-eth2-wallet-store-scratch"
 )
 
 func TestCreateWallet(t *testing.T) {
 	store := scratch.New()
 	encryptor := keystorev4.New()
-	wallet, err := nd.CreateWallet("test wallet", store, encryptor)
+	wallet, err := mpc.CreateWallet("test wallet", store, encryptor)
 	assert.Nil(t, err)
 
 	assert.Equal(t, "test wallet", wallet.Name())
 	assert.Equal(t, uint(1), wallet.Version())
 
 	// Try to create another wallet with the same name; should error
-	_, err = nd.CreateWallet("test wallet", store, encryptor)
+	_, err = mpc.CreateWallet("test wallet", store, encryptor)
 	assert.NotNil(t, err)
 }

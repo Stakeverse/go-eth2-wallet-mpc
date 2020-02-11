@@ -124,4 +124,5 @@ Contributions welcome. Please check out [the issues](https://github.com/Stakedll
 
 ## License
 
+[Apache-2.0](LICENSE) © 2019 Weald Technology Trading Ltd
 [Apache-2.0](LICENSE) © 2020 Staked Securely LLC

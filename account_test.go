@@ -1,4 +1,5 @@
 // Copyright © 2019 Weald Technology Trading
+// Copyright © 2020 Staked Securely LLC
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
@@ -11,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package nd_test
+package mpc_test
 
 import (
 	"encoding/hex"
@@ -21,7 +22,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	keystorev4 "github.com/wealdtech/go-eth2-wallet-encryptor-keystorev4"
-	nd "github.com/wealdtech/go-eth2-wallet-nd"
+	mpc "github.com/Stakedllc/go-eth2-wallet-mpc"
 	scratch "github.com/wealdtech/go-eth2-wallet-store-scratch"
 	types "github.com/wealdtech/go-eth2-wallet-types"
 )
@@ -62,7 +63,7 @@ func TestCreateAccount(t *testing.T) {
 
 	store := scratch.New()
 	encryptor := keystorev4.New()
-	wallet, err := nd.CreateWallet("test wallet", store, encryptor)
+	wallet, err := mpc.CreateWallet("test wallet", store, encryptor)
 	require.Nil(t, err)
 
 	// Try to create without unlocking the wallet; should fail
@@ -122,7 +123,7 @@ func TestImportAccount(t *testing.T) {
 
 	store := scratch.New()
 	encryptor := keystorev4.New()
-	wallet, err := nd.CreateWallet("test wallet", store, encryptor)
+	wallet, err := mpc.CreateWallet("test wallet", store, encryptor)
 	require.Nil(t, err)
 
 	// Try to import without unlocking the wallet; should fail
