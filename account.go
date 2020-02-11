@@ -202,7 +202,7 @@ func (a *account) IsUnlocked() bool {
 	return a.secretKey != nil
 }
 
-// Path returns "" as non-deterministic accounts are not derived.
+// Path returns "" as multi-party accounts are not derived.
 func (a *account) Path() string {
 	return ""
 }

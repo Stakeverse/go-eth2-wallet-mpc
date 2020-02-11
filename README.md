@@ -1,13 +1,13 @@
-# go-eth2-wallet-nd
+# go-eth2-wallet-mpc
 
-[![Tag](https://img.shields.io/github/tag/wealdtech/go-eth2-wallet-nd.svg)](https://github.com/wealdtech/go-eth2-wallet-nd/releases/)
-[![License](https://img.shields.io/github/license/wealdtech/go-eth2-wallet-nd.svg)](LICENSE)
-[![GoDoc](https://godoc.org/github.com/wealdtech/go-eth2-wallet-nd?status.svg)](https://godoc.org/github.com/wealdtech/go-eth2-wallet-nd)
-[![Travis CI](https://img.shields.io/travis/wealdtech/go-eth2-wallet-nd.svg)](https://travis-ci.org/wealdtech/go-eth2-wallet-nd)
-[![codecov.io](https://img.shields.io/codecov/c/github/wealdtech/go-eth2-wallet-nd.svg)](https://codecov.io/github/wealdtech/go-eth2-wallet-nd)
-[![Go Report Card](https://goreportcard.com/badge/github.com/wealdtech/go-eth2-wallet-nd)](https://goreportcard.com/report/github.com/wealdtech/go-eth2-wallet-nd)
+[![Tag](https://img.shields.io/github/tag/Stakedllc/go-eth2-wallet-mpc.svg)](https://github.com/Stakedllc/go-eth2-wallet-mpc/releases/)
+[![License](https://img.shields.io/github/license/Stakedllc/go-eth2-wallet-mpc.svg)](LICENSE)
+[![GoDoc](https://godoc.org/github.com/Stakedllc/go-eth2-wallet-mpc?status.svg)](https://godoc.org/github.com/Stakedllc/go-eth2-wallet-mpc)
+[![Travis CI](https://img.shields.io/travis/Stakedllc/go-eth2-wallet-mpc.svg)](https://travis-ci.org/Stakedllc/go-eth2-wallet-mpc)
+[![codecov.io](https://img.shields.io/codecov/c/github/Stakedllc/go-eth2-wallet-mpc.svg)](https://codecov.io/github/Stakedllc/go-eth2-wallet-mpc)
+[![Go Report Card](https://goreportcard.com/badge/github.com/Stakedllc/go-eth2-wallet-mpc)](https://goreportcard.com/report/github.com/Stakedllc/go-eth2-wallet-mpc)
 
-Non-deterministic [Ethereum 2 wallet](https://github.com/wealdtech/go-eth2-wallet).
+Multi-Party Computation [Ethereum 2 wallet](https://github.com/Stakedllc/go-eth2-wallet).
 
 
 ## Table of Contents
@@ -20,21 +20,21 @@ Non-deterministic [Ethereum 2 wallet](https://github.com/wealdtech/go-eth2-walle
 
 ## Install
 
-`go-eth2-wallet-nd` is a standard Go module which can be installed with:
+`go-eth2-wallet-mpc` is a standard Go module which can be installed with:
 
 ```sh
-go get github.com/wealdtech/go-eth2-wallet-nd
+go get github.com/Stakedllc/go-eth2-wallet-mpc
 ```
 
 ## Usage
 
-Access to the `wallet` is usually via [go-eth2-wallet](https://github.com/wealdtech/go-eth2-wallet); the first two examples below shows how this can be achieved.
+Access to the `wallet` is usually via [go-eth2-wallet](https://github.com/Stakedllc/go-eth2-wallet); the first two examples below shows how this can be achieved.
 
 This wallet generates keys non-deterministically, _i.e._ there is no relationship between keys or idea of a "seed".
 
 Wallet and account names may be composed of any valid UTF-8 characters; the only restriction is they can not start with the underscore (`_`) character.
 
-Note that although non-deterministic wallets do not have passphrases they still need to be unlocked before accounts can be created.  This can be carried out with `walllet.Unlock(nil)`
+Note that although multi-party wallets do not have passphrases they still need to be unlocked before accounts can be created.  This can be carried out with `walllet.Unlock(nil)`
 
 ### Example
 
@@ -43,13 +43,13 @@ Note that although non-deterministic wallets do not have passphrases they still 
 package main
 
 import (
-	e2wallet "github.com/wealdtech/go-eth2-wallet"
+	e2wallet "github.com/Stakedllc/go-eth2-wallet"
 )
 
 func main() {
 
     // Create a wallet
-    wallet, err := e2wallet.CreateWallet("My wallet", e2wallet.WithType("non-deterministic"))
+    wallet, err := e2wallet.CreateWallet("My wallet", e2wallet.WithType("multi-party"))
     if err != nil {
         panic(err)
     }
@@ -63,7 +63,7 @@ func main() {
 package main
 
 import (
-	e2wallet "github.com/wealdtech/go-eth2-wallet"
+	e2wallet "github.com/Stakedllc/go-eth2-wallet"
 )
 
 func main() {
@@ -83,7 +83,7 @@ func main() {
 package main
 
 import (
-	e2wallet "github.com/wealdtech/go-eth2-wallet"
+	e2wallet "github.com/Stakedllc/go-eth2-wallet"
 )
 
 func main() {
@@ -116,11 +116,12 @@ func main() {
 ## Maintainers
 
 Jim McDonald: [@mcdee](https://github.com/mcdee).
+Max Bucci: [@mbucci](https://github.com/mbucci)
 
 ## Contribute
 
-Contributions welcome. Please check out [the issues](https://github.com/wealdtech/go-eth2-wallet-nd/issues).
+Contributions welcome. Please check out [the issues](https://github.com/Stakedllc/go-eth2-wallet-mpc/issues).
 
 ## License
 
-[Apache-2.0](LICENSE) © 2019 Weald Technology Trading Ltd
+[Apache-2.0](LICENSE) © 2020 Staked Securely LLC

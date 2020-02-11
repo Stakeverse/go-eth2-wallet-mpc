@@ -1,4 +1,4 @@
-module github.com/wealdtech/go-eth2-wallet-nd
+module github.com/Stakedllc/go-eth2-wallet-nd
 
 go 1.13
 

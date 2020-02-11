@@ -28,7 +28,7 @@ import (
 )
 
 const (
-	walletType = "non-deterministic"
+	walletType = "multi-party"
 	version    = 1
 )
 
