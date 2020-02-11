@@ -1,4 +1,4 @@
-module github.com/Stakedllc/go-eth2-wallet-nd
+module github.com/Stakedllc/go-eth2-wallet-mpc
 
 go 1.13
 
