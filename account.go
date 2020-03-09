@@ -254,6 +254,7 @@ func deserializeAccount(w *wallet, data []byte) (wtypes.Account, error) {
 	a := newAccount()
 	a.wallet = w
 	a.encryptor = w.encryptor
+	a.keyService = w.keyService
 	if err := json.Unmarshal(data, a); err != nil {
 		return nil, err
 	}
