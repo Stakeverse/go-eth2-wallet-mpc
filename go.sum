@@ -22,8 +22,8 @@ github.com/wealdtech/go-eth2-types/v2 v2.0.2 h1:L1Eg55aArRpUR2H8dnpSevHlSGRDuRQb
 github.com/wealdtech/go-eth2-types/v2 v2.0.2/go.mod h1:CXyZc4kcDaJ+s2SglGofkbHbSjXC6zFwKLJpEVYm5tw=
 github.com/wealdtech/go-eth2-wallet-encryptor-keystorev4 v1.0.0 h1:IcpS4VpXhYz+TVupB5n6C6IQzaKwG+Rc8nvgCa/da4c=
 github.com/wealdtech/go-eth2-wallet-encryptor-keystorev4 v1.0.0/go.mod h1:X8WRO5hEwbjx8ZOqoRmtS1ngyflKs25GkP7qGv7yOqE=
-github.com/wealdtech/go-eth2-wallet-store-scratch v1.3.1-0.20200301224230-50a916578d37 h1:Fi6QoW6yLhXpBvYPCiBoKvY8hTQ5zwDoZYL/vJ4whPw=
-github.com/wealdtech/go-eth2-wallet-store-scratch v1.3.1-0.20200301224230-50a916578d37/go.mod h1:9uTuHDbIJitFqQXvqK7ad3MrBElTt9TMJMHXtGCdNFQ=
+github.com/wealdtech/go-eth2-wallet-store-scratch v1.3.1 h1:GyuTZFUIjGtYZaTBfvCCLYCTY7YGDz3yuEXUm+halwk=
+github.com/wealdtech/go-eth2-wallet-store-scratch v1.3.1/go.mod h1:9uTuHDbIJitFqQXvqK7ad3MrBElTt9TMJMHXtGCdNFQ=
 github.com/wealdtech/go-eth2-wallet-types/v2 v2.0.0 h1:EyTwHO7zXtYkf62h3MqSB3OWc8pv0dnFl41yykUJY3s=
 github.com/wealdtech/go-eth2-wallet-types/v2 v2.0.0/go.mod h1:FWaLEUjjRHbJWJtzrWjj+66UAQgzGaLlgIsKZckMAGc=
 github.com/wealdtech/go-indexer v1.0.0 h1:/S4rfWQbSOnnYmwnvuTVatDibZ8o1s9bmTCHO16XINg=
