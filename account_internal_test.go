@@ -20,6 +20,7 @@ import (
 	"fmt"
 	"net/http"
 	"net/http/httptest"
+	"os"
 	"strings"
 	"testing"
 
@@ -29,6 +30,13 @@ import (
 	"github.com/stretchr/testify/require"
 	e2types "github.com/wealdtech/go-eth2-types/v2"
 )
+
+func TestMain(m *testing.M) {
+	if err := e2types.InitBLS(); err != nil {
+		os.Exit(1)
+	}
+	os.Exit(m.Run())
+}
 
 func TestUnmarshalAccount(t *testing.T) {
 	tests := []struct {
