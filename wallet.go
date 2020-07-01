@@ -152,7 +152,7 @@ func (w *wallet) UnmarshalJSON(data []byte) error {
 func CreateWallet(name string, store wtypes.Store, encryptor wtypes.Encryptor, keyService string, pubKey []byte) (wtypes.Wallet, error) {
 	// First, try to open the wallet.
 	_, err := OpenWallet(name, store, encryptor)
-	if err == nil {
+	if err == nil || !strings.Contains(err.Error(), "wallet not found") {
 		return nil, fmt.Errorf("wallet %q already exists", name)
 	}
 

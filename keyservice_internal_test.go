@@ -128,7 +128,7 @@ func TestNewKeyService(t *testing.T) {
 }
 
 func TestSign(t *testing.T) {
-	signature := _signature("a6df3773e920d6e382298e08f3e5bba17030582b9ae8207c63e87cf72c03694640323c5794c054b4dc530da0c00eaf5d109e004c53f9bbf9c6c7fb1c922ac7f73a1e34b0446fd525d9adbae1df86e1436b9de50f71af99442feb6d453fccbda2")
+	signature := _signature("8418d830acbbd4a4bffec2a449a97c04779a146eaf3fecaee16f6a554a3179c2233e6ff407915e6598365a1059da11ff1013232fdf0bb93ea2a88968fd2d7c2d97f87c789faecea044973075628b9e4f8b6a4a69c4919752f414a807936c208b")
 
 	// Start a local HTTP server
 	server := httptest.NewServer(http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
