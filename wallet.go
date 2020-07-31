@@ -360,6 +360,8 @@ func (w *wallet) CreateAccount(ctx context.Context, name string, passphrase []by
 	if err != nil {
 		return nil, err
 	}
+
+	a.keyService = w.keyService
 	a.encryptor = w.encryptor
 	a.version = w.encryptor.Version()
 	a.wallet = w
