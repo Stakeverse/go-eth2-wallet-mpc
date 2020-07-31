@@ -15,6 +15,7 @@
 package mpc
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"net/url"
@@ -24,8 +25,9 @@ import (
 	"github.com/google/uuid"
 	"github.com/pkg/errors"
 	"github.com/wealdtech/go-ecodec"
+	util "github.com/wealdtech/go-eth2-util"
 	e2types "github.com/wealdtech/go-eth2-types/v2"
-	wtypes "github.com/wealdtech/go-eth2-wallet-types/v2"
+	e2wtypes "github.com/wealdtech/go-eth2-wallet-types/v2"
 	"github.com/wealdtech/go-indexer"
 )
 
@@ -36,15 +38,17 @@ const (
 
 // wallet contains the details of the wallet.
 type wallet struct {
-	id         uuid.UUID
-	name       string
-	version    uint
-	store      wtypes.Store
-	encryptor  wtypes.Encryptor
-	mutex      *sync.RWMutex
-	unlocked   bool
-	index      *indexer.Index
-	keyService *keyService
+	id          uuid.UUID
+	name        string
+	version     uint
+	crypto      map[string]interface{}
+	seed        []byte
+	nextAccount uint64
+	store       e2wtypes.Store
+	encryptor   e2wtypes.Encryptor
+	mutex       *sync.RWMutex
+	index       *indexer.Index
+	keyService  *keyService
 }
 
 // newWallet creates a new wallet
@@ -62,7 +66,9 @@ func (w *wallet) MarshalJSON() ([]byte, error) {
 	data["name"] = w.name
 	data["version"] = w.version
 	data["type"] = walletType
+	data["crypto"] = w.crypto
 	data["keyService"] = w.keyService
+	data["nextaccount"] = w.nextAccount
 	return json.Marshal(data)
 }
 
@@ -118,6 +124,24 @@ func (w *wallet) UnmarshalJSON(data []byte) error {
 	} else {
 		return errors.New("wallet name missing")
 	}
+	if val, exists := v["crypto"]; exists {
+		crypto, ok := val.(map[string]interface{})
+		if !ok {
+			return errors.New("wallet crypto invalid")
+		}
+		w.crypto = crypto
+	} else {
+		return errors.New("wallet crypto missing")
+	}
+	if val, exists := v["nextaccount"]; exists {
+		nextAccount, ok := val.(float64)
+		if !ok {
+			return errors.New("wallet next account invalid")
+		}
+		w.nextAccount = uint64(nextAccount)
+	} else {
+		return errors.New("wallet next account missing")
+	}
 	if val, exists := v["version"]; exists {
 		version, ok := val.(float64)
 		if !ok {
@@ -127,7 +151,6 @@ func (w *wallet) UnmarshalJSON(data []byte) error {
 	} else {
 		return errors.New("wallet version missing")
 	}
-
 	// use RawMessage to pass keyService value to its custom JSON unmarshaler
 	var vRaw map[string]*json.RawMessage
 	if err := json.Unmarshal(data, &vRaw); err != nil {
@@ -147,11 +170,10 @@ func (w *wallet) UnmarshalJSON(data []byte) error {
 	return nil
 }
 
-// CreateWallet creates a new wallet with the given name and stores it in the provided store.
-// This will error if the wallet already exists.
-func CreateWallet(name string, store wtypes.Store, encryptor wtypes.Encryptor, keyService string, pubKey []byte) (wtypes.Wallet, error) {
+// CreateWallet creates a wallet with the given name from a seed and stores it in the provided store.
+func CreateWallet(ctx context.Context, name string, passphrase []byte, store e2wtypes.Store, encryptor e2wtypes.Encryptor, seed []byte, keyService string, pubKey []byte) (e2wtypes.Wallet, error) {
 	// First, try to open the wallet.
-	_, err := OpenWallet(name, store, encryptor)
+	_, err := OpenWallet(ctx, name, store, encryptor)
 	if err == nil || !strings.Contains(err.Error(), "wallet not found") {
 		return nil, fmt.Errorf("wallet %q already exists", name)
 	}
@@ -173,9 +195,25 @@ func CreateWallet(name string, store wtypes.Store, encryptor wtypes.Encryptor, k
 	}
 	ks.publicKey = blsPubKey
 
+	if len(seed) != 64 {
+		return nil, errors.New("seed must be 64 bytes")
+	}
+	crypto, err := encryptor.Encrypt(seed, string(passphrase))
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to encrypt seed")
+	}
+
+	// Decrypt to confirm it works.
+	_, err = encryptor.Decrypt(crypto, string(passphrase))
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to decrypt seed")
+	}
+
 	w := newWallet()
 	w.id = id
 	w.name = name
+	w.crypto = crypto
+	w.nextAccount = 0
 	w.version = version
 	w.store = store
 	w.encryptor = encryptor
@@ -185,23 +223,23 @@ func CreateWallet(name string, store wtypes.Store, encryptor wtypes.Encryptor, k
 }
 
 // OpenWallet opens an existing wallet with the given name.
-func OpenWallet(name string, store wtypes.Store, encryptor wtypes.Encryptor) (wtypes.Wallet, error) {
+func OpenWallet(ctx context.Context, name string, store e2wtypes.Store, encryptor e2wtypes.Encryptor) (e2wtypes.Wallet, error) {
 	data, err := store.RetrieveWallet(name)
 	if err != nil {
 		return nil, errors.Wrapf(err, "wallet %q does not exist", name)
 	}
-	return DeserializeWallet(data, store, encryptor)
+	return DeserializeWallet(ctx, data, store, encryptor)
 }
 
 // DeserializeWallet deserializes a wallet from its byte-level representation
-func DeserializeWallet(data []byte, store wtypes.Store, encryptor wtypes.Encryptor) (wtypes.Wallet, error) {
+func DeserializeWallet(ctx context.Context, data []byte, store e2wtypes.Store, encryptor e2wtypes.Encryptor) (e2wtypes.Wallet, error) {
 	wallet := newWallet()
 	if err := json.Unmarshal(data, wallet); err != nil {
 		return nil, errors.Wrap(err, "wallet corrupt")
 	}
 	wallet.store = store
 	wallet.encryptor = encryptor
-	if err := wallet.retrieveAccountsIndex(); err != nil {
+	if err := wallet.retrieveAccountsIndex(ctx); err != nil {
 		return nil, errors.Wrap(err, "wallet index corrupt")
 	}
 
@@ -228,23 +266,7 @@ func (w *wallet) Version() uint {
 	return w.version
 }
 
-// Lock locks the wallet.  A locked wallet cannot create new accounts.
-func (w *wallet) Lock() {
-	w.unlocked = false
-}
-
-// Unlock unlocks the wallet.  An unlocked wallet can create new accounts.
-func (w *wallet) Unlock(passphrase []byte) error {
-	w.unlocked = true
-	return nil
-}
-
-// IsUnlocked reports if the wallet is unlocked.
-func (w *wallet) IsUnlocked() bool {
-	return w.unlocked
-}
-
-// storeWallet stores the wallet in the store.
+// store stores the wallet in the store.
 func (w *wallet) storeWallet() error {
 	data, err := json.Marshal(w)
 	if err != nil {
@@ -262,42 +284,82 @@ func (w *wallet) storeWallet() error {
 	return nil
 }
 
+// Lock locks the wallet.  A locked wallet cannot create new accounts.
+func (w *wallet) Lock(ctx context.Context) error {
+	w.mutex.Lock()
+	defer w.mutex.Unlock()
+
+	w.seed = nil
+	return nil
+}
+
+// Unlock unlocks the wallet.  An unlocked wallet can create new accounts.
+func (w *wallet) Unlock(ctx context.Context, passphrase []byte) error {
+	w.mutex.Lock()
+	defer w.mutex.Unlock()
+
+	seed, err := w.encryptor.Decrypt(w.crypto, string(passphrase))
+	if err != nil {
+		return errors.New("incorrect passphrase")
+	}
+	w.seed = seed
+
+	return nil
+}
+
+// IsUnlocked reports if the wallet is unlocked.
+func (w *wallet) IsUnlocked(ctx context.Context) (bool, error) {
+	return w.seed != nil, nil
+}
+
 // CreateAccount creates a new account in the wallet.
 // The only rule for names is that they cannot start with an underscore (_) character.
-func (w *wallet) CreateAccount(name string, passphrase []byte) (wtypes.Account, error) {
+func (w *wallet) CreateAccount(ctx context.Context, name string, passphrase []byte) (e2wtypes.Account, error) {
 	if name == "" {
 		return nil, errors.New("account name missing")
 	}
 	if strings.HasPrefix(name, "_") {
 		return nil, fmt.Errorf("invalid account name %q", name)
 	}
-	if !w.IsUnlocked() {
+	unlocked, err := w.IsUnlocked(ctx)
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to obtain lock status")
+	}
+	if !unlocked {
 		return nil, errors.New("wallet must be unlocked to create accounts")
 	}
 
 	// Ensure that we don't already have an account with this name
-	if _, err := w.AccountByName(name); err == nil {
+	if _, err := w.AccountByName(ctx, name); err == nil {
 		return nil, fmt.Errorf("account with name %q already exists", name)
 	}
 
+	// Generate the private key from the seed and next account
+	w.mutex.Lock()
+	defer w.mutex.Unlock()
+	accountNum := w.nextAccount
+	w.nextAccount++
+	if err := w.storeWallet(); err != nil {
+		return nil, errors.Wrapf(err, "failed to create account %q", name)
+	}
+
+	path := fmt.Sprintf("m/12381/3600/%d/0", accountNum)
+	privateKey, err := util.PrivateKeyFromSeedAndPath(w.seed, path)
+	if err != nil {
+		return nil, errors.Wrapf(err, "failed to create private key for account %q", name)
+	}
 	a := newAccount()
-	var err error
+	a.path = path
 	if a.id, err = uuid.NewRandom(); err != nil {
 		return nil, err
 	}
 	a.name = name
-	privateKey, err := e2types.GenerateBLSPrivateKey()
-	if err != nil {
-		return nil, err
-	}
 	a.publicKey = privateKey.PublicKey()
 	// Encrypt the private key
-	a.crypto, err = w.encryptor.Encrypt(privateKey.Marshal(), passphrase)
+	a.crypto, err = w.encryptor.Encrypt(privateKey.Marshal(), string(passphrase))
 	if err != nil {
 		return nil, err
 	}
-
-	a.keyService = w.keyService
 	a.encryptor = w.encryptor
 	a.version = w.encryptor.Version()
 	a.wallet = w
@@ -311,56 +373,9 @@ func (w *wallet) CreateAccount(name string, passphrase []byte) (wtypes.Account, 
 	return a, nil
 }
 
-// ImportAccount creates a new account in the wallet from an existing private key.
-// The only rule for names is that they cannot start with an underscore (_) character.
-// This will error if an account with the name already exists.
-func (w *wallet) ImportAccount(name string, key []byte, passphrase []byte) (wtypes.Account, error) {
-	if name == "" {
-		return nil, errors.New("account name missing")
-	}
-	if strings.HasPrefix(name, "_") {
-		return nil, fmt.Errorf("invalid account name %q", name)
-	}
-	if !w.IsUnlocked() {
-		return nil, errors.New("wallet must be unlocked to import accounts")
-	}
-
-	// Ensure that we don't already have an account with this name
-	_, err := w.AccountByName(name)
-	if err == nil {
-		return nil, fmt.Errorf("account with name %q already exists", name)
-	}
-
-	a := newAccount()
-	a.id, err = uuid.NewRandom()
-	if err != nil {
-		return nil, err
-	}
-	a.name = name
-	privateKey, err := e2types.BLSPrivateKeyFromBytes(key)
-	if err != nil {
-		return nil, err
-	}
-	a.publicKey = privateKey.PublicKey()
-	// Encrypt the private key
-	a.crypto, err = w.encryptor.Encrypt(privateKey.Marshal(), passphrase)
-	if err != nil {
-		return nil, err
-	}
-
-	a.keyService = w.keyService
-	a.encryptor = w.encryptor
-	a.version = w.encryptor.Version()
-	a.wallet = w
-
-	w.index.Add(a.id, a.name)
-
-	return a, a.storeAccount()
-}
-
 // Accounts provides all accounts in the wallet.
-func (w *wallet) Accounts() <-chan wtypes.Account {
-	ch := make(chan wtypes.Account, 1024)
+func (w *wallet) Accounts(ctx context.Context) <-chan e2wtypes.Account {
+	ch := make(chan e2wtypes.Account, 1024)
 	go func() {
 		for data := range w.store.RetrieveAccounts(w.ID()) {
 			if a, err := deserializeAccount(w, data); err == nil {
@@ -373,14 +388,14 @@ func (w *wallet) Accounts() <-chan wtypes.Account {
 }
 
 // Export exports the entire wallet, protected by an additional passphrase.
-func (w *wallet) Export(passphrase []byte) ([]byte, error) {
+func (w *wallet) Export(ctx context.Context, passphrase []byte) ([]byte, error) {
 	type walletExt struct {
 		Wallet   *wallet    `json:"wallet"`
 		Accounts []*account `json:"accounts"`
 	}
 
 	accounts := make([]*account, 0)
-	for acc := range w.Accounts() {
+	for acc := range w.Accounts(ctx) {
 		accounts = append(accounts, acc.(*account))
 	}
 
@@ -398,7 +413,7 @@ func (w *wallet) Export(passphrase []byte) ([]byte, error) {
 }
 
 // Import imports the entire wallet, protected by an additional passphrase.
-func Import(encryptedData []byte, passphrase []byte, store wtypes.Store, encryptor wtypes.Encryptor) (wtypes.Wallet, error) {
+func Import(ctx context.Context, encryptedData []byte, passphrase []byte, store e2wtypes.Store, encryptor e2wtypes.Encryptor) (e2wtypes.Wallet, error) {
 	type walletExt struct {
 		Wallet   *wallet    `json:"wallet"`
 		Accounts []*account `json:"accounts"`
@@ -420,7 +435,7 @@ func Import(encryptedData []byte, passphrase []byte, store wtypes.Store, encrypt
 	ext.Wallet.encryptor = encryptor
 
 	// See if the wallet already exists
-	if _, err := OpenWallet(ext.Wallet.Name(), store, encryptor); err == nil {
+	if _, err := OpenWallet(ctx, ext.Wallet.Name(), store, encryptor); err == nil {
 		return nil, fmt.Errorf("wallet %q already exists", ext.Wallet.Name())
 	}
 
@@ -434,28 +449,33 @@ func Import(encryptedData []byte, passphrase []byte, store wtypes.Store, encrypt
 		acc.wallet = ext.Wallet
 		acc.encryptor = encryptor
 		acc.mutex = new(sync.RWMutex)
+		ext.Wallet.index.Add(acc.id, acc.name)
 		if err := acc.storeAccount(); err != nil {
 			return nil, fmt.Errorf("failed to store account %q", acc.Name())
 		}
-		ext.Wallet.index.Add(acc.id, acc.name)
 	}
+	// Store the index.
 
 	return ext.Wallet, nil
 }
 
 // AccountByName provides a single account from the wallet given its name.
 // This will error if the account is not found.
-func (w *wallet) AccountByName(name string) (wtypes.Account, error) {
+func (w *wallet) AccountByName(ctx context.Context, name string) (e2wtypes.Account, error) {
+	if strings.HasPrefix(name, "m/") {
+		// Programmatic name
+		return w.programmaticAccount(name)
+	}
 	id, exists := w.index.ID(name)
 	if !exists {
 		return nil, fmt.Errorf("no account with name %q", name)
 	}
-	return w.AccountByID(id)
+	return w.AccountByID(ctx, id)
 }
 
-// AccountByID provides a single account from the wallet given its ID.
+// AcountByID provides a single account from the wallet given its ID.
 // This will error if the account is not found.
-func (w *wallet) AccountByID(id uuid.UUID) (wtypes.Account, error) {
+func (w *wallet) AccountByID(ctx context.Context, id uuid.UUID) (e2wtypes.Account, error) {
 	data, err := w.store.RetrieveAccount(w.id, id)
 	if err != nil {
 		return nil, err
@@ -464,17 +484,44 @@ func (w *wallet) AccountByID(id uuid.UUID) (wtypes.Account, error) {
 }
 
 // Store returns the wallet's store.
-func (w *wallet) Store() wtypes.Store {
+func (w *wallet) Store() e2wtypes.Store {
 	return w.store
 }
 
+// programmaticAccount calculates an account on the fly given its path.
+func (w *wallet) programmaticAccount(path string) (e2wtypes.Account, error) {
+	privateKey, err := util.PrivateKeyFromSeedAndPath(w.seed, path)
+	if err != nil {
+		return nil, errors.Wrapf(err, "failed to create private key for path %q", path)
+	}
+	a := newAccount()
+	a.path = path
+	a.id, err = uuid.NewRandom()
+	if err != nil {
+		return nil, err
+	}
+	a.name = path
+	a.publicKey = privateKey.PublicKey()
+	a.secretKey = privateKey
+	// Encrypt the private key with an empty passphrase
+	a.crypto, err = w.encryptor.Encrypt(privateKey.Marshal(), "")
+	if err != nil {
+		return nil, err
+	}
+	a.encryptor = w.encryptor
+	a.version = w.encryptor.Version()
+	a.wallet = w
+
+	return a, nil
+}
+
 // retrieveAccountsIndex retrieves the accounts index for a wallet.
-func (w *wallet) retrieveAccountsIndex() error {
+func (w *wallet) retrieveAccountsIndex(ctx context.Context) error {
 	serializedIndex, err := w.store.RetrieveAccountsIndex(w.id)
 	if err != nil {
 		// Attempt to recreate the index.
 		w.index = indexer.New()
-		for account := range w.Accounts() {
+		for account := range w.Accounts(ctx) {
 			w.index.Add(account.ID(), account.Name())
 		}
 		if err := w.storeAccountsIndex(); err != nil {

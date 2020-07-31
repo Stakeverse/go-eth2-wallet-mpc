@@ -1,5 +1,5 @@
-// Copyright © 2019 Weald Technology Trading
-// Copyright © 2020 Staked Securely LLC
+// Copyright 2019, 2020 Weald Technology Trading
+// Copyright 2020 Staked Securely LLC
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
@@ -15,24 +15,149 @@
 package mpc_test
 
 import (
+	"context"
 	"testing"
 
 	mpc "github.com/Stakedllc/go-eth2-wallet-mpc/v2"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	keystorev4 "github.com/wealdtech/go-eth2-wallet-encryptor-keystorev4"
 	scratch "github.com/wealdtech/go-eth2-wallet-store-scratch"
+	e2wtypes "github.com/wealdtech/go-eth2-wallet-types/v2"
 )
 
-func TestCreateWallet(t *testing.T) {
+func TestInterfaces(t *testing.T) {
 	store := scratch.New()
 	encryptor := keystorev4.New()
-	wallet, err := mpc.CreateWallet("test wallet", store, encryptor, "http://localhost:8000", _byteArray("868630f2aa3d585ff470d29e17c35ac8c5393317724ea9f842395a061dc68c938ec426c74725242a63797bf517020fa2"))
-	assert.Nil(t, err)
+	seed := []byte{
+		0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08, 0x09, 0x0a, 0x0b, 0x0c, 0x0d, 0x0e, 0x0f,
+		0x10, 0x11, 0x12, 0x13, 0x14, 0x15, 0x16, 0x17, 0x18, 0x19, 0x1a, 0x1b, 0x1c, 0x1d, 0x1e, 0x1f,
+		0x20, 0x21, 0x22, 0x23, 0x24, 0x25, 0x26, 0x27, 0x28, 0x29, 0x2a, 0x2b, 0x2c, 0x2d, 0x2e, 0x2f,
+		0x30, 0x31, 0x32, 0x33, 0x34, 0x35, 0x36, 0x37, 0x38, 0x39, 0x3a, 0x3b, 0x3c, 0x3d, 0x3e, 0x3f,
+	}
+	keyservice := "http://localhost:8000"
+	pubkey := _byteArray("868630f2aa3d585ff470d29e17c35ac8c5393317724ea9f842395a061dc68c938ec426c74725242a63797bf517020fa2")
+	wallet, err := mpc.CreateWallet(context.Background(), "test wallet", []byte("wallet passphrase"), store, encryptor, seed, keyservice, pubkey)
+	require.Nil(t, err)
 
-	assert.Equal(t, "test wallet", wallet.Name())
-	assert.Equal(t, uint(1), wallet.Version())
+	_, isWalletIDProvider := wallet.(e2wtypes.WalletIDProvider)
+	assert.True(t, isWalletIDProvider)
+	_, isWalletNameProvider := wallet.(e2wtypes.WalletNameProvider)
+	assert.True(t, isWalletNameProvider)
+	_, isWalletTypeProvider := wallet.(e2wtypes.WalletTypeProvider)
+	assert.True(t, isWalletTypeProvider)
+	_, isWalletVersionProvider := wallet.(e2wtypes.WalletVersionProvider)
+	assert.True(t, isWalletVersionProvider)
+	_, isWalletLocker := wallet.(e2wtypes.WalletLocker)
+	assert.True(t, isWalletLocker)
+	_, isWalletAccountsProvider := wallet.(e2wtypes.WalletAccountsProvider)
+	assert.True(t, isWalletAccountsProvider)
+	_, isWalletAccountByIDProvider := wallet.(e2wtypes.WalletAccountByIDProvider)
+	assert.True(t, isWalletAccountByIDProvider)
+	_, isWalletAccountByNameProvider := wallet.(e2wtypes.WalletAccountByNameProvider)
+	assert.True(t, isWalletAccountByNameProvider)
+	_, isWalletAccountCreator := wallet.(e2wtypes.WalletAccountCreator)
+	assert.True(t, isWalletAccountCreator)
+	_, isWalletExporter := wallet.(e2wtypes.WalletExporter)
+	assert.True(t, isWalletExporter)
+}
 
-	// Try to create another wallet with the same name; should error
-	_, err = mpc.CreateWallet("test wallet", store, encryptor, "http://localhost:8000", _byteArray("868630f2aa3d585ff470d29e17c35ac8c5393317724ea9f842395a061dc68c938ec426c74725242a63797bf517020fa2"))
-	assert.NotNil(t, err)
+func TestCreateWallet(t *testing.T) {
+	tests := []struct {
+		name       string
+		seed       []byte
+		pubkey     []byte
+		keyservice string
+		err        string
+	}{
+		{
+			name: "NoPubkey",
+			err:  "public key must be 48 bytes",
+		},
+		{
+			name: "ShortPubkey",
+			pubkey: _byteArray("868630f2aa3d585ff470d29e17c35ac8c5393317724ea9f842395a061dc68c938ec426c74725242a63797bf51702"),
+			err:  "public key must be 48 bytes",
+		},
+		{
+			name: "LongPubkey",
+			pubkey: _byteArray("868630f2aa3d585ff470d29e17c35ac8c5393317724ea9f842395a061dc68c938ec426c74725242a63797bf517020fa222"),
+			err:  "public key must be 48 bytes",
+		},
+		{
+			name: "NoSeed",
+			pubkey: _byteArray("868630f2aa3d585ff470d29e17c35ac8c5393317724ea9f842395a061dc68c938ec426c74725242a63797bf517020fa2"),
+			err:  "seed must be 64 bytes",
+		},
+		{
+			name: "ShortSeed",
+			pubkey: _byteArray("868630f2aa3d585ff470d29e17c35ac8c5393317724ea9f842395a061dc68c938ec426c74725242a63797bf517020fa2"),
+			seed: []byte{
+				0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08, 0x09, 0x0a, 0x0b, 0x0c, 0x0d, 0x0e, 0x0f,
+				0x10, 0x11, 0x12, 0x13, 0x14, 0x15, 0x16, 0x17, 0x18, 0x19, 0x1a, 0x1b, 0x1c, 0x1d, 0x1e, 0x1f,
+				0x20, 0x21, 0x22, 0x23, 0x24, 0x25, 0x26, 0x27, 0x28, 0x29, 0x2a, 0x2b, 0x2c, 0x2d, 0x2e, 0x2f,
+				0x30, 0x31, 0x32, 0x33, 0x34, 0x35, 0x36, 0x37, 0x38, 0x39, 0x3a, 0x3b, 0x3c, 0x3d, 0x3e,
+			},
+			err: "seed must be 64 bytes",
+		},
+		{
+			name: "LongSeed",
+			pubkey: _byteArray("868630f2aa3d585ff470d29e17c35ac8c5393317724ea9f842395a061dc68c938ec426c74725242a63797bf517020fa2"),
+			seed: []byte{
+				0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08, 0x09, 0x0a, 0x0b, 0x0c, 0x0d, 0x0e, 0x0f,
+				0x10, 0x11, 0x12, 0x13, 0x14, 0x15, 0x16, 0x17, 0x18, 0x19, 0x1a, 0x1b, 0x1c, 0x1d, 0x1e, 0x1f,
+				0x20, 0x21, 0x22, 0x23, 0x24, 0x25, 0x26, 0x27, 0x28, 0x29, 0x2a, 0x2b, 0x2c, 0x2d, 0x2e, 0x2f,
+				0x30, 0x31, 0x32, 0x33, 0x34, 0x35, 0x36, 0x37, 0x38, 0x39, 0x3a, 0x3b, 0x3c, 0x3d, 0x3e, 0x3f,
+				0x40,
+			},
+			err: "seed must be 64 bytes",
+		},
+		{
+			name: "Good",
+			pubkey: _byteArray("868630f2aa3d585ff470d29e17c35ac8c5393317724ea9f842395a061dc68c938ec426c74725242a63797bf517020fa2"),
+			seed: []byte{
+				0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08, 0x09, 0x0a, 0x0b, 0x0c, 0x0d, 0x0e, 0x0f,
+				0x10, 0x11, 0x12, 0x13, 0x14, 0x15, 0x16, 0x17, 0x18, 0x19, 0x1a, 0x1b, 0x1c, 0x1d, 0x1e, 0x1f,
+				0x20, 0x21, 0x22, 0x23, 0x24, 0x25, 0x26, 0x27, 0x28, 0x29, 0x2a, 0x2b, 0x2c, 0x2d, 0x2e, 0x2f,
+				0x30, 0x31, 0x32, 0x33, 0x34, 0x35, 0x36, 0x37, 0x38, 0x39, 0x3a, 0x3b, 0x3c, 0x3d, 0x3e, 0x3f,
+			},
+			keyservice: "http://localhost:8000",
+		},
+		{
+			name: "Dup",
+			pubkey: _byteArray("868630f2aa3d585ff470d29e17c35ac8c5393317724ea9f842395a061dc68c938ec426c74725242a63797bf517020fa2"),
+			seed: []byte{
+				0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08, 0x09, 0x0a, 0x0b, 0x0c, 0x0d, 0x0e, 0x0f,
+				0x10, 0x11, 0x12, 0x13, 0x14, 0x15, 0x16, 0x17, 0x18, 0x19, 0x1a, 0x1b, 0x1c, 0x1d, 0x1e, 0x1f,
+				0x20, 0x21, 0x22, 0x23, 0x24, 0x25, 0x26, 0x27, 0x28, 0x29, 0x2a, 0x2b, 0x2c, 0x2d, 0x2e, 0x2f,
+				0x30, 0x31, 0x32, 0x33, 0x34, 0x35, 0x36, 0x37, 0x38, 0x39, 0x3a, 0x3b, 0x3c, 0x3d, 0x3e, 0x3f,
+			},
+			keyservice: "http://localhost:8000",
+		},
+		{
+			name: "Dup",
+			pubkey: _byteArray("868630f2aa3d585ff470d29e17c35ac8c5393317724ea9f842395a061dc68c938ec426c74725242a63797bf517020fa2"),
+			seed: []byte{
+				0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08, 0x09, 0x0a, 0x0b, 0x0c, 0x0d, 0x0e, 0x0f,
+				0x10, 0x11, 0x12, 0x13, 0x14, 0x15, 0x16, 0x17, 0x18, 0x19, 0x1a, 0x1b, 0x1c, 0x1d, 0x1e, 0x1f,
+				0x20, 0x21, 0x22, 0x23, 0x24, 0x25, 0x26, 0x27, 0x28, 0x29, 0x2a, 0x2b, 0x2c, 0x2d, 0x2e, 0x2f,
+				0x30, 0x31, 0x32, 0x33, 0x34, 0x35, 0x36, 0x37, 0x38, 0x39, 0x3a, 0x3b, 0x3c, 0x3d, 0x3e, 0x3f,
+			},
+			keyservice: "http://localhost:8000",
+			err: "wallet \"Dup\" already exists",
+		},
+	}
+
+	store := scratch.New()
+	encryptor := keystorev4.New()
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			_, err := mpc.CreateWallet(context.Background(), test.name, []byte("wallet passphrase"), store, encryptor, test.seed, test.keyservice, test.pubkey)
+			if test.err != "" {
+				require.EqualError(t, err, test.err)
+			} else {
+				require.NoError(t, err)
+			}
+		})
+	}
 }

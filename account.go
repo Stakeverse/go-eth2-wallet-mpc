@@ -16,6 +16,7 @@ package mpc
 
 import (
 	"bytes"
+	"context"
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
@@ -25,7 +26,7 @@ import (
 	"github.com/pkg/errors"
 	e2types "github.com/wealdtech/go-eth2-types/v2"
 	keystorev4 "github.com/wealdtech/go-eth2-wallet-encryptor-keystorev4"
-	wtypes "github.com/wealdtech/go-eth2-wallet-types/v2"
+	e2wtypes "github.com/wealdtech/go-eth2-wallet-types/v2"
 )
 
 // account contains the details of the account.
@@ -36,8 +37,9 @@ type account struct {
 	crypto     map[string]interface{}
 	secretKey  e2types.PrivateKey
 	version    uint
-	wallet     wtypes.Wallet
-	encryptor  wtypes.Encryptor
+	path       string
+	wallet     e2wtypes.Wallet
+	encryptor  e2wtypes.Encryptor
 	mutex      *sync.RWMutex
 	keyService *keyService
 }
@@ -56,7 +58,7 @@ func (a *account) MarshalJSON() ([]byte, error) {
 	data["name"] = a.name
 	data["pubkey"] = fmt.Sprintf("%x", a.publicKey.Marshal())
 	data["crypto"] = a.crypto
-	data["encryptor"] = a.encryptor.Name()
+	data["path"] = a.path
 	data["version"] = a.version
 	return json.Marshal(data)
 }
@@ -127,6 +129,15 @@ func (a *account) UnmarshalJSON(data []byte) error {
 	} else {
 		return errors.New("account crypto missing")
 	}
+	if val, exists := v["path"]; exists {
+		path, ok := val.(string)
+		if !ok {
+			return errors.New("account path invalid")
+		}
+		a.path = path
+	} else {
+		return errors.New("account path missing")
+	}
 	if val, exists := v["version"]; exists {
 		version, ok := val.(float64)
 		if !ok {
@@ -168,28 +179,48 @@ func (a *account) PublicKey() e2types.PublicKey {
 
 	localKeyCopy.Aggregate(remoteKey.Copy())
 
-	return localKeyCopy
+	// Safe to ignore the error as this is already a public key
+	keyCopy, _ := e2types.BLSPublicKeyFromBytes(localKeyCopy.Marshal())
+	return keyCopy
 }
 
 // PrivateKey provides the private key for the account.
-// Will return an error since remoteKeyService doesn't support private key access
-func (a *account) PrivateKey() (e2types.PrivateKey, error) {
-	return a.keyService.PrivateKey()
+func (a *account) PrivateKey(ctx context.Context) (e2types.PrivateKey, error) {
+	unlocked, err := a.IsUnlocked(ctx)
+	if err != nil {
+		return nil, err
+	}
+	if !unlocked {
+		return nil, errors.New("cannot provide private key when account is locked")
+	}
+
+	sk, err := a.keyService.PrivateKey()
+	if err != nil {
+		return nil, err
+	}
+
+	return e2types.BLSPrivateKeyFromBytes(sk.Marshal())
+}
+
+// Wallet provides the wallet for the account.
+func (a *account) Wallet() e2wtypes.Wallet {
+	return a.wallet
 }
 
 // Lock locks the account.  A locked account cannot sign data.
-func (a *account) Lock() {
+func (a *account) Lock(ctx context.Context) error {
 	a.mutex.Lock()
 	defer a.mutex.Unlock()
 	a.secretKey = nil
+	return nil
 }
 
 // Unlock unlocks the account.  An unlocked account can sign data.
-func (a *account) Unlock(passphrase []byte) error {
+func (a *account) Unlock(ctx context.Context, passphrase []byte) error {
 	a.mutex.Lock()
 	defer a.mutex.Unlock()
 
-	secretBytes, err := a.encryptor.Decrypt(a.crypto, passphrase)
+	secretBytes, err := a.encryptor.Decrypt(a.crypto, string(passphrase))
 	if err != nil {
 		return errors.New("incorrect passphrase")
 	}
@@ -206,20 +237,24 @@ func (a *account) Unlock(passphrase []byte) error {
 }
 
 // IsUnlocked returns true if the account is unlocked.
-func (a *account) IsUnlocked() bool {
-	return a.secretKey != nil
+func (a *account) IsUnlocked(ctx context.Context) (bool, error) {
+	return a.secretKey != nil, nil
 }
 
-// Path returns "" as multi-party accounts are not derived.
+// Path returns the full path from which the account key is derived.
 func (a *account) Path() string {
-	return ""
+	return a.path
 }
 
 // Sign signs data.
-func (a *account) Sign(data []byte) (e2types.Signature, error) {
+func (a *account) Sign(ctx context.Context, data []byte) (e2types.Signature, error) {
 	a.mutex.RLock()
 	defer a.mutex.RUnlock()
-	if !a.IsUnlocked() {
+	unlocked, err := a.IsUnlocked(ctx)
+	if err != nil {
+		return nil, err
+	}
+	if !unlocked {
 		return nil, errors.New("cannot sign when account is locked")
 	}
 	localSignature := a.secretKey.Sign(data)
@@ -232,7 +267,7 @@ func (a *account) Sign(data []byte) (e2types.Signature, error) {
 	return e2types.AggregateSignatures([]e2types.Signature{localSignature, remoteSignature}), nil
 }
 
-// storeAccount stores the accout.
+// storeAccount stores the account.
 func (a *account) storeAccount() error {
 	a.mutex.RLock()
 	defer a.mutex.RUnlock()
@@ -250,7 +285,7 @@ func (a *account) storeAccount() error {
 }
 
 // deserializeAccount deserializes account data to an account.
-func deserializeAccount(w *wallet, data []byte) (wtypes.Account, error) {
+func deserializeAccount(w *wallet, data []byte) (e2wtypes.Account, error) {
 	a := newAccount()
 	a.wallet = w
 	a.encryptor = w.encryptor
