@@ -315,6 +315,61 @@ func (w *wallet) IsUnlocked(ctx context.Context) (bool, error) {
 // CreateAccount creates a new account in the wallet.
 // The only rule for names is that they cannot start with an underscore (_) character.
 func (w *wallet) CreateAccount(ctx context.Context, name string, passphrase []byte) (e2wtypes.Account, error) {
+	// Lock the wallet to avoid parallel creation of accounts.
+	w.mutex.Lock()
+	defer w.mutex.Unlock()
+
+	// Obtain the next available account.
+	// Although this should be nextAccount, it is possible that the user has created wallets with explicit
+	// paths that clash so we check here.
+	accountNum := w.nextAccount
+	var path string
+	for {
+		path = fmt.Sprintf("m/12381/3600/%d/0", accountNum)
+		found := false
+		for acc := range w.Accounts(ctx) {
+			if acc.(*account).Path() == path {
+				found = true
+				break
+			}
+		}
+		if !found {
+			break
+		}
+		accountNum++
+	}
+	w.nextAccount = accountNum + 1
+
+	if err := w.storeWallet(); err != nil {
+		return nil, errors.Wrapf(err, "failed to update wallet for account %q", name)
+	}
+
+	account, err := w.createPathedAccount(ctx, path, name, passphrase)
+	if err != nil {
+		return nil, err
+	}
+
+	return account, nil
+}
+
+// CreatePathedAccount creates a new account in the wallet with a given path.
+// The only rule for names is that they cannot start with an underscore (_) character.
+// This will error if an account with the name or path already exists.
+func (w *wallet) CreatePathedAccount(ctx context.Context, path string, name string, passphrase []byte) (e2wtypes.Account, error) {
+	w.mutex.Lock()
+	defer w.mutex.Unlock()
+
+	account, err := w.createPathedAccount(ctx, path, name, passphrase)
+	if err != nil {
+		return nil, err
+	}
+
+	return account, nil
+}
+
+// createPathedAccount creates a new account in the wallet with a given path.
+// This is an internal function, that assumes a lock is held on the wallet.
+func (w *wallet) createPathedAccount(ctx context.Context, path string, name string, passphrase []byte) (e2wtypes.Account, error) {
 	if name == "" {
 		return nil, errors.New("account name missing")
 	}
@@ -329,21 +384,18 @@ func (w *wallet) CreateAccount(ctx context.Context, name string, passphrase []by
 		return nil, errors.New("wallet must be unlocked to create accounts")
 	}
 
-	// Ensure that we don't already have an account with this name
+	// Ensure that we don't already have an account with this name.
 	if _, err := w.AccountByName(ctx, name); err == nil {
 		return nil, fmt.Errorf("account with name %q already exists", name)
 	}
 
-	// Generate the private key from the seed and next account
-	w.mutex.Lock()
-	defer w.mutex.Unlock()
-	accountNum := w.nextAccount
-	w.nextAccount++
-	if err := w.storeWallet(); err != nil {
-		return nil, errors.Wrapf(err, "failed to create account %q", name)
+	// Ensure that we don't already have an account with this path.
+	for acc := range w.Accounts(ctx) {
+		if acc.(*account).Path() == path {
+			return nil, fmt.Errorf("account with path %q already exists", path)
+		}
 	}
-
-	path := fmt.Sprintf("m/12381/3600/%d/0", accountNum)
+	// Generate the private key from the seed and next account
 	privateKey, err := util.PrivateKeyFromSeedAndPath(w.seed, path)
 	if err != nil {
 		return nil, errors.Wrapf(err, "failed to create private key for account %q", name)

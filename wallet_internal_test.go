@@ -48,6 +48,11 @@ func TestUnmarshalWallet(t *testing.T) {
 			err:   errors.New(`invalid character 'b' looking for beginning of value`),
 		},
 		{
+			name:  "WrongJSON",
+			input: []byte(`[]`),
+			err:   errors.New(`json: cannot unmarshal array into Go value of type map[string]interface {}`),
+		},
+		{
 			name:  "MissingID",
 			input: []byte(`{"name":"Bad","type":"multi-party","version":1,"crypto":{"checksum":{"function":"sha256","message":"d6f4c3898450a44666538785f419a78decde53da5f3ec17e611a961e204ed617","params":{}},"cipher":{"function":"aes-128-ctr","message":"0040872e1ba675bfe39053565f7ec02bc1560b2a95670b046f1a2e17facc1b57","params":{"iv":"7cbadf81a3895dbfee3863f0e5bd19f2"}},"kdf":{"function":"pbkdf2","message":"","params":{"c":16,"dklen":32,"prf":"hmac-sha256","salt":"fcb4992215d5f84444c6f49a69e2124a899740e76caea09a1d465a71f802023a"}}}}`),
 			err:   errors.New("wallet ID missing"),

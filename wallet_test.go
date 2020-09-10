@@ -58,6 +58,8 @@ func TestInterfaces(t *testing.T) {
 	assert.True(t, isWalletAccountByNameProvider)
 	_, isWalletAccountCreator := wallet.(e2wtypes.WalletAccountCreator)
 	assert.True(t, isWalletAccountCreator)
+	_, isWalletPathedAccountCreator := wallet.(e2wtypes.WalletPathedAccountCreator)
+	assert.True(t, isWalletPathedAccountCreator)
 	_, isWalletExporter := wallet.(e2wtypes.WalletExporter)
 	assert.True(t, isWalletExporter)
 }
